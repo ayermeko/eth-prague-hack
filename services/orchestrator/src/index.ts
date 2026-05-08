@@ -13,7 +13,9 @@ const env = z
     BASESCAN_DEEP_ACTOR_ID: z.string(),
     WALLET_PRIVATE_KEY: z.string().regex(/^0x[a-fA-F0-9]{64}$/),
     APIFY_BASE_URL: z.string().url().default('https://api.apify.com'),
-    OPENAI_API_KEY: z.string(),
+    // Optional: Codex CLI logged in with a ChatGPT subscription doesn't need this.
+    // Set it only if you use API-key auth instead.
+    OPENAI_API_KEY: z.string().optional(),
   })
   .parse(process.env);
 
@@ -37,7 +39,7 @@ const spawn = spawnFactory({
     `Investigate ${address} on Base. Budget: ${env.INVESTIGATION_BUDGET_USDC} USDC.`,
   ],
   env: {
-    OPENAI_API_KEY: env.OPENAI_API_KEY,
+    ...(env.OPENAI_API_KEY ? { OPENAI_API_KEY: env.OPENAI_API_KEY } : {}),
     WALLET_PRIVATE_KEY: env.WALLET_PRIVATE_KEY,
     APIFY_BASE_URL: env.APIFY_BASE_URL,
     BASESCAN_DEEP_ACTOR_ID: env.BASESCAN_DEEP_ACTOR_ID,
