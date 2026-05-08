@@ -22,7 +22,7 @@ Terms you'll encounter when working with Apify. These don't map cleanly to conce
 - **Pay Per Event (PPE) / Pay Per Result (PPR)** - Monetization models where users pay per event triggered or per result returned (vs. per CU).
 - **Apify Proxy** - Managed proxy service. Variants: Residential Proxy, Datacenter Proxy, Google SERP Proxy.
 - **Crawlee** - Apify's open-source framework for building scrapers (JS/TS and Python).
-- **MCP** - Model Context Protocol. Apify's MCP server is at `https://mcp.apify.com` 
+- **MCP** - Model Context Protocol. Apify's MCP server is at `https://mcp.apify.com`
 - **x402** - Open standard for HTTP-native agent payments via USDC on Base. Lets autonomous agents pay for Actors without an Apify account.
 
 > **Naming trap:** The `apify` npm package is the SDK for *building* Actors. The `apify-client` package is for *calling* Actors. If you want to call Actors from your application, install `apify-client`.
@@ -140,9 +140,9 @@ Discovery index: `https://apify.com/.well-known/agent-skills/index.json`
 | `apify-actorization` | Convert an existing project into an Actor |
 | `apify-generate-output-schema` | Auto-generate output schemas from source code |
 
-**For data extraction** - use `apify-ultimate-scraper`. 
+**For data extraction** - use `apify-ultimate-scraper`.
 
-**For Actor development** - use `apify-actor-development`, `apify-actorization` and `apify-generate-output-schema` 
+**For Actor development** - use `apify-actor-development`, `apify-actorization` and `apify-generate-output-schema`
 
 Install Apify CLI:
 ```bash
