@@ -1,4 +1,5 @@
 export { createX402Client } from './client.js';
+export type { X402Client } from './client.js';
 export type {
   PaymentEvent,
   PaymentStatus,
