@@ -1,0 +1,7 @@
+# RugSleuth
+node_modules
+dist
+.next
+.env
+.env.local
+*.log

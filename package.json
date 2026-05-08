@@ -1,0 +1,20 @@
+{
+  "name": "rugsleuth",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "apps/*",
+    "actors/*"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "dev:orchestrator": "npm --workspace services/orchestrator run dev",
+    "dev:dashboard": "npm --workspace apps/dashboard run dev"
+  }
+}
