@@ -7,20 +7,16 @@ describe('scrape_basescan_address', () => {
     const fakeClient = {
       on: vi.fn(),
       fetch: vi.fn().mockResolvedValue({
-        result: {
-          data: {
-            items: [
-              {
-                address: '0xc1fcc4300305a415a7ea894f71a0694e9f7831d3',
-                ethBalance: '0.01 ETH',
-                isContract: true,
-                verified: false,
-                latestTxs: ['tx1', 'tx2'],
-                scrapedAt: '2026-05-08T12:00:00Z',
-              },
-            ],
+        result: [
+          {
+            address: '0xc1fcc4300305a415a7ea894f71a0694e9f7831d3',
+            ethBalance: '0.01 ETH',
+            isContract: true,
+            verified: false,
+            latestTxs: ['tx1', 'tx2'],
+            scrapedAt: '2026-05-08T12:00:00Z',
           },
-        },
+        ],
         payments: [
           {
             id: 'p1',

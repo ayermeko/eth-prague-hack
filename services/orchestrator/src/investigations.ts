@@ -29,6 +29,17 @@ export class Investigations {
     const run = await this.opts.spawn({ investigationId: id, address: input.address });
     this.active.set(id, run);
 
+    let completed = false;
+    const finish = (reason: 'verdict' | 'timeout' | 'budget' | 'error') => {
+      if (completed) return;
+      completed = true;
+      this.bus.publish(id, {
+        type: 'investigation.completed',
+        reason,
+        ts: new Date().toISOString(),
+      });
+    };
+
     let spent = 0;
     const off = this.bus.subscribe(id, (event) => {
       if (
@@ -44,11 +55,7 @@ export class Investigations {
             ts: new Date().toISOString(),
           });
           run.kill();
-          this.bus.publish(id, {
-            type: 'investigation.completed',
-            reason: 'budget',
-            ts: new Date().toISOString(),
-          });
+          finish('budget');
           off();
         }
       }
@@ -56,22 +63,22 @@ export class Investigations {
 
     const timer = setTimeout(() => {
       run.kill();
-      this.bus.publish(id, {
-        type: 'investigation.completed',
-        reason: 'timeout',
-        ts: new Date().toISOString(),
-      });
+      finish('timeout');
       off();
     }, this.opts.timeoutMs);
 
     run.exit
-      .then(() => {
+      .then((code) => {
         clearTimeout(timer);
+        off();
         this.active.delete(id);
+        finish(code === 0 ? 'verdict' : 'error');
       })
       .catch(() => {
         clearTimeout(timer);
+        off();
         this.active.delete(id);
+        finish('error');
       });
 
     return id;

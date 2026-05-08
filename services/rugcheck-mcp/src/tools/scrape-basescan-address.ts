@@ -18,18 +18,14 @@ export interface ScrapeBasescanAddressOutput {
   payments: PaymentEvent[];
 }
 
-interface ApifyRunResponse {
-  data: {
-    items: Array<{
-      address: string;
-      ethBalance: string | null;
-      isContract: boolean;
-      verified: boolean;
-      latestTxs: string[];
-      scrapedAt: string;
-    }>;
-  };
-}
+type ApifyDatasetItems = Array<{
+  address: string;
+  ethBalance: string | null;
+  isContract: boolean;
+  verified: boolean;
+  latestTxs: string[];
+  scrapedAt: string;
+}>;
 
 export async function scrapeBasescanAddress(
   input: ScrapeBasescanAddressInput,
@@ -46,7 +42,7 @@ export async function scrapeBasescanAddress(
       url,
       method: 'POST',
       body: { address },
-    })) as X402Response<ApifyRunResponse>;
+    })) as X402Response<ApifyDatasetItems>;
 
     for (const p of res.payments) {
       emit({
@@ -60,7 +56,7 @@ export async function scrapeBasescanAddress(
       });
     }
 
-    const item = res.result.data.items[0];
+    const item = res.result[0];
     if (!item) throw new Error('Actor returned no dataset items');
 
     const out: ScrapeBasescanAddressOutput = {
