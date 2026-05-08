@@ -1,44 +1,58 @@
+import { Actor } from 'apify';
 import { createPlaywrightRouter } from '@crawlee/playwright';
 
 export const router = createPlaywrightRouter();
 
 router.addDefaultHandler(async ({ request, page, log, pushData }) => {
-    log.info(`Scraping BaseScan URL:`, { url: request.loadedUrl });
-    const title = await page.title();
+  const address = (request.userData as { address?: string }).address ?? '';
+  log.info(`Scraping BaseScan address page`, { url: request.loadedUrl, address });
 
-    // Give the page a moment to load dynamic contents
-    await page.waitForTimeout(2000);
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForTimeout(1500);
 
-    // Extract basic information like balance
-    let ethBalance = null;
-    let latestTransactions = [];
+  const title = await page.title();
 
-    try {
-        // Try to find the section with ETH Balance
-        const balanceCard = page.locator('div.card').filter({ hasText: 'ETH Balance' }).first();
-        if (await balanceCard.isVisible()) {
-            ethBalance = await balanceCard.innerText();
-        }
-    } catch (e) {
-        log.warning(`Could not extract ETH Balance: ${e}`);
+  let ethBalance: string | null = null;
+  try {
+    const card = page.locator('div.card').filter({ hasText: 'ETH Balance' }).first();
+    if (await card.isVisible()) {
+      ethBalance = (await card.innerText()).trim();
     }
+  } catch (err) {
+    log.warning(`Could not extract ETH balance: ${String(err)}`);
+  }
 
-    try {
-        // Try to get some transaction rows from the primary table
-        const rowLocators = page.locator('table.table tbody tr').locator('nth=0,1,2,3,4');
-        const count = await rowLocators.count();
-        for (let i = 0; i < count; i++) {
-            latestTransactions.push(await rowLocators.nth(i).innerText());
-        }
-    } catch (e) {
-        log.warning(`Could not extract transactions: ${e}`);
+  const isContract =
+    (await page.locator('a[href*="#code"]:has-text("Contract")').count()) > 0;
+
+  const verified =
+    (await page
+      .locator('span:has-text("Contract Source Code Verified")')
+      .count()) > 0;
+
+  const txRowsRaw: string[] = [];
+  try {
+    const rows = page.locator('table.table tbody tr');
+    const count = Math.min(await rows.count(), 5);
+    for (let i = 0; i < count; i += 1) {
+      txRowsRaw.push((await rows.nth(i).innerText()).trim());
     }
+  } catch (err) {
+    log.warning(`Could not extract transactions: ${String(err)}`);
+  }
 
-    await pushData({
-        url: request.loadedUrl,
-        title,
-        ethBalance,
-        latestTransactions,
-        scrapedAt: new Date().toISOString()
-    });
+  const item = {
+    address,
+    url: request.loadedUrl,
+    title,
+    ethBalance,
+    isContract,
+    verified,
+    latestTxs: txRowsRaw,
+    scrapedAt: new Date().toISOString(),
+  };
+
+  await pushData(item);
+  // Emit the PPE billing event exactly once per successful scrape.
+  await Actor.charge({ eventName: 'address-fetched' });
 });

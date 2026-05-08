@@ -1,18 +1,32 @@
 {
-	"$schema": "https://apify.com/schemas/v1/actor.ide.json",
-	"actorSpecification": 1,
-	"name": "basescan-scraper",
-	"title": "Project Playwright Crawler Typescript",
-	"description": "Crawlee and Playwright project in typescript.",
-	"version": "0.0",
-	"meta": {
-		"templateId": "ts-crawlee-playwright-chrome",
-		"generatedBy": "<FILL-IN-MODEL>"
-	},
-	"input": "./input_schema.json",
-	"output": "./output_schema.json",
-	"storages": {
-		"dataset": "./dataset_schema.json"
-	},
-	"dockerfile": "../Dockerfile"
+  "$schema": "https://apify.com/schemas/v1/actor.ide.json",
+  "actorSpecification": 1,
+  "name": "basescan-deep",
+  "title": "BaseScan Deep (RugSleuth)",
+  "description": "Pay-Per-Event BaseScan scraper for the RugSleuth investigator agent.",
+  "version": "0.1",
+  "meta": {
+    "templateId": "ts-crawlee-playwright-chrome",
+    "generatedBy": "Claude Opus 4.7"
+  },
+  "input": "./input_schema.json",
+  "output": "./output_schema.json",
+  "storages": {
+    "dataset": "./dataset_schema.json"
+  },
+  "pricingInfos": [
+    {
+      "pricingModel": "PAY_PER_EVENT",
+      "pricingPerEvent": {
+        "actorChargeEvents": {
+          "address-fetched": {
+            "eventTitle": "Address fetched",
+            "eventDescription": "One BaseScan address page scraped (balance, contract status, recent txs).",
+            "eventPriceUsd": 0.05
+          }
+        }
+      }
+    }
+  ],
+  "dockerfile": "../Dockerfile"
 }

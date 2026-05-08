@@ -1,0 +1,11 @@
+{
+  "$schema": "https://apify.com/schemas/v1/pricing.ide.json",
+  "pricingModel": "PAY_PER_EVENT",
+  "events": {
+    "address-fetched": {
+      "title": "Address fetched",
+      "description": "One BaseScan address page scraped.",
+      "priceUsd": 0.05
+    }
+  }
+}
