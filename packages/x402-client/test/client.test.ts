@@ -30,7 +30,7 @@ describe('x402-client', () => {
     expect(res.result).toEqual({ ok: true });
     expect(res.payments.length).toBe(3);
     expect(res.payments.map((p) => p.status)).toEqual(['required', 'signed', 'settled']);
-    expect(res.payments[0]!.amountUsdc).toBe('0.05');
+    expect(res.payments[0]!.amountUsdc).toBe('1.000000');
   });
 
   it('reuses prepaid balance: only the first call signs', async () => {

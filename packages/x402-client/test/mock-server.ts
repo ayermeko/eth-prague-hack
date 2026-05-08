@@ -1,20 +1,25 @@
 // packages/x402-client/test/mock-server.ts
+//
+// Mock x402 v2 server. Emits a base64-encoded `payment-required` header with
+// the `exact` scheme so the client exercises the same code path it will hit
+// against Apify in production.
 import { createServer, IncomingMessage, ServerResponse, Server } from 'node:http';
 import { AddressInfo } from 'node:net';
 
 export interface MockBehavior {
-  // First call to a path: respond with 402; subsequent calls: 200
-  // unless `alwaysFree` includes the path.
+  // Paths that always return 200 with `resultBody`, even without X402 header.
   alwaysFree?: string[];
-  // PPE event name to advertise in 402 response
-  ppeEvent?: string;
-  // amount in USDC decimal string
-  amountUsdc?: string;
-  // pay-to recipient address
+  // Network in CAIP-2 form (default Base mainnet).
+  network?: string;
+  // ERC-20 contract — defaults to USDC on Base.
+  asset?: string;
+  // Amount in token base units (USDC: 6 decimals; default = 1 USDC = "1000000").
+  amount?: string;
+  // Recipient.
   payTo?: string;
-  // result body to return on settled 200
+  // Result body returned on a settled 200.
   resultBody?: unknown;
-  // force every call to fail signing verification (for error tests)
+  // Reject every signed retry (for failure-path tests).
   rejectSignatures?: boolean;
 }
 
@@ -25,11 +30,14 @@ export interface MockServerHandle {
   prepaidByCaller: Record<string, number>;
 }
 
+const USDC_BASE = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+
 export async function startMockServer(behavior: MockBehavior = {}): Promise<MockServerHandle> {
   const callsByPath: Record<string, number> = {};
   const prepaidByCaller: Record<string, number> = {};
-  const ppeEvent = behavior.ppeEvent ?? 'address-fetched';
-  const amountUsdc = behavior.amountUsdc ?? '0.05';
+  const network = behavior.network ?? 'eip155:8453';
+  const asset = behavior.asset ?? USDC_BASE;
+  const amount = behavior.amount ?? '1000000';
   const payTo = behavior.payTo ?? '0x0000000000000000000000000000000000000bee';
   const resultBody = behavior.resultBody ?? { ok: true };
 
@@ -54,7 +62,6 @@ export async function startMockServer(behavior: MockBehavior = {}): Promise<Mock
       return;
     }
 
-    // Drawdown if prepaid balance exists
     if ((prepaidByCaller[callerKey] ?? 0) > 0) {
       prepaidByCaller[callerKey] = (prepaidByCaller[callerKey] ?? 0) - 1;
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -62,34 +69,38 @@ export async function startMockServer(behavior: MockBehavior = {}): Promise<Mock
       return;
     }
 
-    // No signature → emit 402
     if (!signature) {
-      const required = JSON.stringify({
-        scheme: 'eip712',
-        chainId: 8453,
-        verifyingContract: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-        amountUsdc,
-        payTo,
-        ppeEvent,
-        nonce: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        validUntil: new Date(Date.now() + 60_000).toISOString(),
-      });
+      const challenge = {
+        x402Version: 2,
+        error: 'PAYMENT-SIGNATURE header is required.',
+        resource: { description: 'Mock x402 v2 endpoint', mimeType: 'application/json' },
+        accepts: [
+          {
+            scheme: 'exact',
+            network,
+            asset,
+            amount,
+            payTo,
+            maxTimeoutSeconds: 60,
+            extra: { name: 'USD Coin', version: '2' },
+          },
+        ],
+      };
+      const headerValue = Buffer.from(JSON.stringify(challenge), 'utf8').toString('base64');
       res.writeHead(402, {
         'Content-Type': 'application/json',
-        'PAYMENT-REQUIRED': required,
+        'payment-required': headerValue,
       });
       res.end(JSON.stringify({ error: 'Payment required' }));
       return;
     }
 
-    // Signature provided
     if (behavior.rejectSignatures) {
       res.writeHead(403, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Bad signature' }));
       return;
     }
 
-    // Top up prepaid (5 free calls per signed payment to mirror Apify model)
     prepaidByCaller[callerKey] = (prepaidByCaller[callerKey] ?? 0) + 5;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(resultBody));

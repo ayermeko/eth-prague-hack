@@ -5,7 +5,13 @@ import type {
   X402Request,
   X402Response,
 } from './types.js';
-import { parseChallenge, signChallenge } from './signing.js';
+import {
+  encodePaymentPayload,
+  formatUsdc,
+  parseChallenge,
+  pickExactOption,
+  signChallenge,
+} from './signing.js';
 
 export interface X402Client {
   fetch<T = unknown>(req: X402Request): Promise<X402Response<T>>;
@@ -15,7 +21,7 @@ export interface X402Client {
 const PAYMENT_PROTOCOL = 'X402';
 const HEADER_PROTOCOL = 'X-APIFY-PAYMENT-PROTOCOL';
 const HEADER_SIGNATURE = 'PAYMENT-SIGNATURE';
-const HEADER_REQUIRED = 'PAYMENT-REQUIRED';
+const HEADER_REQUIRED = 'payment-required';
 
 export function createX402Client(opts: X402ClientOptions): X402Client {
   const fetchImpl = opts.fetch ?? globalThis.fetch;
@@ -65,23 +71,30 @@ export function createX402Client(opts: X402ClientOptions): X402Client {
 
       const requiredHeader = first.headers.get(HEADER_REQUIRED);
       if (!requiredHeader) {
-        throw new Error('x402-client: 402 without PAYMENT-REQUIRED header');
+        throw new Error('x402-client: 402 without payment-required header');
       }
 
+      // Drain the 402 body (avoids socket-leak warnings on some runtimes).
+      await first.text().catch(() => undefined);
+
       const challenge = parseChallenge(requiredHeader);
+      const option = pickExactOption(challenge);
+      const amountUsdc = formatUsdc(option.amount);
+
       const requiredEvent: PaymentEvent = {
         id: randomId(),
         status: 'required',
-        amountUsdc: challenge.amountUsdc,
-        payTo: challenge.payTo,
-        ppeEvent: challenge.ppeEvent,
+        amountUsdc,
+        payTo: option.payTo,
+        ppeEvent: option.network,
         ts: now().toISOString(),
       };
       emit(payments, requiredEvent);
 
       let signature: string;
       try {
-        signature = await signChallenge(opts.privateKey, challenge);
+        const signed = await signChallenge(opts.privateKey, challenge);
+        signature = encodePaymentPayload(signed);
       } catch (err) {
         const failed: PaymentEvent = {
           ...requiredEvent,
@@ -103,12 +116,13 @@ export function createX402Client(opts: X402ClientOptions): X402Client {
 
       const second = await send(req, signature);
       if (second.status !== 200) {
+        const errBody = await second.text().catch(() => '');
         const failed: PaymentEvent = {
           ...requiredEvent,
           id: randomId(),
           status: 'failed',
           ts: now().toISOString(),
-          error: `Resend returned ${second.status}`,
+          error: `Resend returned ${second.status}${errBody ? `: ${errBody.slice(0, 240)}` : ''}`,
         };
         emit(payments, failed);
         throw new Error(`x402-client: resend returned ${second.status}`);
