@@ -30,14 +30,20 @@ export async function spawnCodex(opts: SpawnCodexOptions): Promise<SpawnCodexHan
       const trimmed = line.replace(/\r$/, '');
       if (!trimmed) continue;
       const ts = new Date().toISOString();
-      if (kind === 'stderr' && trimmed.startsWith(RSEVT)) {
-        try {
-          const payload = JSON.parse(trimmed.slice(RSEVT.length));
-          opts.bus.publish(opts.investigationId, { type: 'mcp.event', ts, payload });
-          continue;
-        } catch {
-          // fall through and treat as a regular line
+      // Stderr is reserved for our RSEVT structured events (from the MCP
+      // server) and a small set of error-ish lines worth surfacing.
+      // Codex's own stderr is dominated by routine logger output (model-list
+      // refresh failures, telemetry) that floods the dashboard if forwarded.
+      if (kind === 'stderr') {
+        if (trimmed.startsWith(RSEVT)) {
+          try {
+            const payload = JSON.parse(trimmed.slice(RSEVT.length));
+            opts.bus.publish(opts.investigationId, { type: 'mcp.event', ts, payload });
+          } catch {
+            // malformed RSEVT line — drop it
+          }
         }
+        continue;
       }
       opts.bus.publish(opts.investigationId, { type: 'codex.line', line: trimmed, ts });
     }

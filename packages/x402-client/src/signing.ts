@@ -7,6 +7,7 @@
 // sends it back base64-encoded in the `PAYMENT-SIGNATURE` header. The server
 // (or its facilitator) submits the authorization on-chain to settle.
 
+import { execFileSync } from 'node:child_process';
 import { privateKeyToAccount } from 'viem/accounts';
 import type { Hex } from 'viem';
 
@@ -130,6 +131,25 @@ export async function signChallenge(
 export function encodePaymentPayload(payload: X402V2PaymentPayload): string {
   return b64EncodeFromString(JSON.stringify(payload));
 }
+
+// Sign via the official Apify mcpc CLI. mcpc reads the wallet from the macOS
+// Keychain (no plaintext key required in env), produces a v2 / "exact" signed
+// payload that Apify's facilitator accepts. Returns a base64-encoded
+// PAYMENT-SIGNATURE header value ready to send.
+export function mcpcSign(challenge: X402V2Challenge, mcpcBin = 'mcpc'): string {
+  const challengeB64 = b64EncodeFromString(JSON.stringify(challenge));
+  const out = execFileSync(mcpcBin, ['x402', 'sign', challengeB64, '--json'], {
+    encoding: 'utf8',
+    timeout: 30_000,
+  });
+  const parsed = JSON.parse(out) as { paymentSignature: string };
+  if (!parsed.paymentSignature) {
+    throw new Error(`mcpc x402 sign returned no paymentSignature: ${out.slice(0, 200)}`);
+  }
+  return parsed.paymentSignature;
+}
+
+export type SignerFn = (challenge: X402V2Challenge) => string | Promise<string>;
 
 export function pickExactOption(challenge: X402V2Challenge): X402AcceptOption {
   const exact = challenge.accepts.find((a) => a.scheme === 'exact');

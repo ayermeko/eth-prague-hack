@@ -11,6 +11,7 @@ import {
   parseChallenge,
   pickExactOption,
   signChallenge,
+  type SignerFn,
 } from './signing.js';
 
 export interface X402Client {
@@ -93,8 +94,17 @@ export function createX402Client(opts: X402ClientOptions): X402Client {
 
       let signature: string;
       try {
-        const signed = await signChallenge(opts.privateKey, challenge);
-        signature = encodePaymentPayload(signed);
+        if (opts.sign) {
+          // Pluggable signer (e.g. mcpcSign) — returns the final
+          // PAYMENT-SIGNATURE header value already wrapped + base64-encoded.
+          signature = await opts.sign(challenge);
+        } else {
+          if (!opts.privateKey) {
+            throw new Error('x402-client: either privateKey or sign must be provided');
+          }
+          const signed = await signChallenge(opts.privateKey, challenge);
+          signature = encodePaymentPayload(signed);
+        }
       } catch (err) {
         const failed: PaymentEvent = {
           ...requiredEvent,

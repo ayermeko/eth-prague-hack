@@ -21,13 +21,23 @@ export interface StartInput {
 
 export class Investigations {
   private readonly active = new Map<string, SpawnedRun>();
+  private latestId: string | null = null;
 
   constructor(private readonly bus: EventBus, private readonly opts: InvestigationsOptions) {}
+
+  // Latest started, still-active investigation ID. Used to route side-channel
+  // MCP events (from the file tail) to the right SSE stream when no per-event
+  // investigation ID is available.
+  getLatestActiveId(): string | null {
+    if (this.latestId && this.active.has(this.latestId)) return this.latestId;
+    return null;
+  }
 
   async start(input: StartInput): Promise<string> {
     const id = randomUUID();
     const run = await this.opts.spawn({ investigationId: id, address: input.address });
     this.active.set(id, run);
+    this.latestId = id;
 
     let completed = false;
     const finish = (reason: 'verdict' | 'timeout' | 'budget' | 'error') => {

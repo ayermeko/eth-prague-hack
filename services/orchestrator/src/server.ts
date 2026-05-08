@@ -28,19 +28,34 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
   });
 
   app.get<{ Params: { id: string } }>('/investigations/:id/events', (req, reply) => {
+    // Fastify would otherwise terminate the stream the moment this handler
+    // returns. hijack() hands the raw socket to us so we own the lifecycle.
+    reply.hijack();
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
     });
+    // Flush an initial comment so the browser sees the connection open
+    // immediately even before the first real event arrives.
+    reply.raw.write(': open\n\n');
 
     const send = (event: InvestigationEvent): void => {
       reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
     };
 
+    // Idle keepalive — proxies and some browsers close streams after ~30s
+    // of silence. Send a comment every 15s while the connection is open.
+    const heartbeat = setInterval(() => {
+      reply.raw.write(': ping\n\n');
+    }, 15_000);
+
     const unsub = opts.bus.subscribe(req.params.id, send);
-    req.raw.on('close', unsub);
+    req.raw.on('close', () => {
+      clearInterval(heartbeat);
+      unsub();
+    });
   });
 
   return app;

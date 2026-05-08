@@ -35,8 +35,14 @@ export function useInvestigation() {
   const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const sourceRef = useRef<EventSource | null>(null);
+  // Re-entry guard. setStatus is async — without this, rapid successive
+  // start() calls (key-repeat, double-click, race) all see status==='idle'
+  // before the state flush and each spawn a fresh investigation server-side.
+  const inFlightRef = useRef(false);
 
   const start = useCallback(async (address: string) => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setEvents([]);
     setError(null);
     setStatus('running');
@@ -60,17 +66,20 @@ export function useInvestigation() {
         setEvents((prev) => [...prev, event]);
         if (event.type === 'investigation.completed') {
           setStatus('done');
+          inFlightRef.current = false;
           source.close();
         }
       };
       source.onerror = () => {
         setStatus('error');
         setError('SSE connection lost');
+        inFlightRef.current = false;
         source.close();
       };
     } catch (err) {
       setStatus('error');
       setError(err instanceof Error ? err.message : String(err));
+      inFlightRef.current = false;
     }
   }, []);
 

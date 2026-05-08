@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve as pathResolve } from 'node:path';
+import { createReadStream, openSync, closeSync, statSync, watchFile } from 'node:fs';
 import { z } from 'zod';
 import { EventBus } from './events.js';
 import { Investigations } from './investigations.js';
@@ -15,8 +16,12 @@ const env = z
     CODEX_BIN: z.string().default('codex'),
     MCP_SERVER_NAME: z.string().default('rugsleuth'),
     BASESCAN_DEEP_ACTOR_ID: z.string(),
-    WALLET_PRIVATE_KEY: z.string().regex(/^0x[a-fA-F0-9]{64}$/),
+    // Wallet key is no longer required: rugcheck-mcp delegates signing to the
+    // mcpc CLI, which reads the private key from the macOS Keychain.
+    // Kept optional only as a fallback for users who explicitly want viem signing.
+    WALLET_PRIVATE_KEY: z.string().regex(/^0x[a-fA-F0-9]{64}$/).optional(),
     APIFY_BASE_URL: z.string().url().default('https://api.apify.com'),
+    MCPC_BIN: z.string().default('mcpc'),
     // Optional: Codex CLI logged in with a ChatGPT subscription doesn't need this.
     // Set it only if you use API-key auth instead.
     OPENAI_API_KEY: z.string().optional(),
@@ -35,6 +40,13 @@ const SYSTEM_PROMPT = [
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MCP_ENTRY = pathResolve(__dirname, '..', '..', 'rugcheck-mcp', 'dist', 'index.js');
 
+// Side-channel for MCP events. Codex captures the MCP child's stderr
+// internally so RSEVT lines on stderr don't reach us; rugcheck-mcp also
+// appends each event to this file, which we tail.
+const EVENTS_FILE = pathResolve('/tmp', `rugsleuth-events-${process.pid}.jsonl`);
+// Truncate / create empty
+closeSync(openSync(EVENTS_FILE, 'w'));
+
 // Re-register the MCP server at startup with the current env. This is
 // idempotent: remove first (ignore failure), then add. Keeps secrets out of
 // any persistent state across orchestrator restarts and ensures Codex sees the
@@ -45,24 +57,27 @@ function registerMcpServer(): void {
   } catch {
     // not registered yet — fine
   }
-  execFileSync(
-    env.CODEX_BIN,
-    [
-      'mcp',
-      'add',
-      env.MCP_SERVER_NAME,
-      '--env',
-      `WALLET_PRIVATE_KEY=${env.WALLET_PRIVATE_KEY}`,
-      '--env',
-      `BASESCAN_DEEP_ACTOR_ID=${env.BASESCAN_DEEP_ACTOR_ID}`,
-      '--env',
-      `APIFY_BASE_URL=${env.APIFY_BASE_URL}`,
-      '--',
-      'node',
-      MCP_ENTRY,
-    ],
-    { stdio: 'pipe' },
-  );
+  const args: string[] = [
+    'mcp',
+    'add',
+    env.MCP_SERVER_NAME,
+    '--env',
+    `BASESCAN_DEEP_ACTOR_ID=${env.BASESCAN_DEEP_ACTOR_ID}`,
+    '--env',
+    `APIFY_BASE_URL=${env.APIFY_BASE_URL}`,
+    '--env',
+    `MCPC_BIN=${env.MCPC_BIN}`,
+    '--env',
+    `RUGSLEUTH_EVENTS_FILE=${EVENTS_FILE}`,
+  ];
+  // Only include the wallet key if explicitly set — by default we leave it
+  // out so nothing private lands in ~/.codex/config.toml; mcpc handles signing
+  // from its own keychain-stored wallet.
+  if (env.WALLET_PRIVATE_KEY) {
+    args.push('--env', `WALLET_PRIVATE_KEY=${env.WALLET_PRIVATE_KEY}`);
+  }
+  args.push('--', 'node', MCP_ENTRY);
+  execFileSync(env.CODEX_BIN, args, { stdio: 'pipe' });
 }
 
 registerMcpServer();
@@ -76,6 +91,10 @@ const spawn = spawnFactory({
     '--skip-git-repo-check',
     '--sandbox',
     'workspace-write',
+    // Lower reasoning effort. xhigh (the user's default) leads codex to
+    // overthink and cancel slow tool calls (mcpc x402 sign takes ~5s).
+    '-c',
+    'model_reasoning_effort="medium"',
     `${SYSTEM_PROMPT}\n\nInvestigate ${address} on Base. Budget: ${env.INVESTIGATION_BUDGET_USDC} USDC.`,
   ],
   env: {
@@ -90,6 +109,41 @@ const investigations = new Investigations(bus, {
   budgetUsdc: env.INVESTIGATION_BUDGET_USDC,
   timeoutMs: env.INVESTIGATION_TIMEOUT_MS,
 });
+
+// File-tail event router. rugcheck-mcp appends RSEVT-prefixed JSON lines to
+// EVENTS_FILE; we forward each parsed event to the latest active investigation.
+function startEventTail(): void {
+  const RSEVT = 'RSEVT ';
+  let offset = statSync(EVENTS_FILE).size;
+  watchFile(EVENTS_FILE, { interval: 200 }, (curr, prev) => {
+    if (curr.size <= offset) {
+      // file truncated — reset
+      if (curr.size < offset) offset = 0;
+      return;
+    }
+    const stream = createReadStream(EVENTS_FILE, { start: offset, end: curr.size - 1, encoding: 'utf8' });
+    let buffer = '';
+    stream.on('data', (chunk) => {
+      buffer += chunk.toString();
+    });
+    stream.on('end', () => {
+      offset = curr.size;
+      for (const raw of buffer.split('\n')) {
+        const line = raw.trim();
+        if (!line || !line.startsWith(RSEVT)) continue;
+        try {
+          const payload = JSON.parse(line.slice(RSEVT.length));
+          const id = investigations.getLatestActiveId();
+          if (!id) continue;
+          bus.publish(id, { type: 'mcp.event', ts: new Date().toISOString(), payload });
+        } catch {
+          // malformed line, skip
+        }
+      }
+    });
+  });
+}
+startEventTail();
 
 const app = buildServer({ bus, investigations });
 await app.listen({ port: env.ORCHESTRATOR_PORT, host: '0.0.0.0' });

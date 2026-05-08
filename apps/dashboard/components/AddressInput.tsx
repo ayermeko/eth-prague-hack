@@ -13,7 +13,10 @@ export function AddressInput({ onSubmit, disabled }: {
       className="flex gap-2"
       onSubmit={(e) => {
         e.preventDefault();
-        if (valid) onSubmit(value.toLowerCase());
+        // Guard against held-Enter / rapid resubmits: form's onSubmit fires
+        // independently of the button's disabled state.
+        if (!valid || disabled) return;
+        onSubmit(value.toLowerCase());
       }}
     >
       <input
