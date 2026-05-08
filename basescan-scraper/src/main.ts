@@ -48,6 +48,8 @@ const crawler = new PlaywrightCrawler({
     },
 });
 
+
+
 await crawler.run(startUrls);
 
 // Exit successfully
