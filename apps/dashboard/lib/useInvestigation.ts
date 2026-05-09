@@ -1,6 +1,7 @@
 // apps/dashboard/lib/useInvestigation.ts
 'use client';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { MOCK_SCENARIO, MOCK_ADDRESS } from './mockScenario';
 
 export type DashboardEvent =
   | { type: 'codex.line'; line: string; ts: string }
@@ -39,6 +40,14 @@ export function useInvestigation() {
   // start() calls (key-repeat, double-click, race) all see status==='idle'
   // before the state flush and each spawn a fresh investigation server-side.
   const inFlightRef = useRef(false);
+  const mockTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    return () => {
+      mockTimersRef.current.forEach(clearTimeout);
+      mockTimersRef.current = [];
+    };
+  }, []);
 
   const start = useCallback(async (address: string) => {
     if (inFlightRef.current) return;
@@ -83,5 +92,31 @@ export function useInvestigation() {
     }
   }, []);
 
-  return { start, events, status, error };
+  const startMock = useCallback(() => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    mockTimersRef.current.forEach(clearTimeout);
+    mockTimersRef.current = [];
+    sourceRef.current?.close();
+    setEvents([]);
+    setError(null);
+    setStatus('running');
+
+    let cumulative = 0;
+    const now = () => new Date().toISOString();
+    for (const step of MOCK_SCENARIO) {
+      cumulative += step.delayMs;
+      const timer = setTimeout(() => {
+        const event = step.event(now);
+        setEvents((prev) => [...prev, event]);
+        if (event.type === 'investigation.completed') {
+          setStatus('done');
+          inFlightRef.current = false;
+        }
+      }, cumulative);
+      mockTimersRef.current.push(timer);
+    }
+  }, []);
+
+  return { start, startMock, mockAddress: MOCK_ADDRESS, events, status, error };
 }
