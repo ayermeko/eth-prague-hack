@@ -1,33 +1,21 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve as pathResolve } from 'node:path';
-import { z } from 'zod';
+import { parseConfig } from './config.js';
 import { EventBus } from './events.js';
 import { Investigations } from './investigations.js';
 import { spawnCodex } from './codex.js';
 import { buildServer, spawnFactory } from './server.js';
+import { buildCodexExecArgs } from './codex-args.js';
 
-const env = z
-  .object({
-    ORCHESTRATOR_PORT: z.coerce.number().default(4000),
-    INVESTIGATION_BUDGET_USDC: z.coerce.number().default(2.0),
-    INVESTIGATION_TIMEOUT_MS: z.coerce.number().default(180_000),
-    CODEX_BIN: z.string().default('codex'),
-    MCP_SERVER_NAME: z.string().default('rugsleuth'),
-    BASESCAN_DEEP_ACTOR_ID: z.string(),
-    WALLET_PRIVATE_KEY: z.string().regex(/^0x[a-fA-F0-9]{64}$/),
-    APIFY_BASE_URL: z.string().url().default('https://api.apify.com'),
-    // Optional: Codex CLI logged in with a ChatGPT subscription doesn't need this.
-    // Set it only if you use API-key auth instead.
-    OPENAI_API_KEY: z.string().optional(),
-  })
-  .parse(process.env);
+const env = parseConfig(process.env);
 
 const SYSTEM_PROMPT = [
-  'You are RugSleuth, an autonomous onchain investigator.',
-  `Use the ${env.MCP_SERVER_NAME} MCP tools (mcp__${env.MCP_SERVER_NAME}__*) to gather evidence about a Base contract address.`,
-  'Prefer cheap signals first. Stop investigating as soon as you can issue a confident verdict.',
-  'When done, print exactly one line on stdout starting with VERDICT: followed by a JSON object describing your verdict (e.g. VERDICT: {"score":92,"label":"LIKELY_RUG","reasons":[...]}).',
+  'You are RugSleuth, a public blockchain metadata summarizer for a hackathon demo.',
+  `Use the ${env.MCP_SERVER_NAME} MCP tools (mcp__${env.MCP_SERVER_NAME}__*) to fetch public BaseScan metadata for a Base address.`,
+  'Do not provide hacking, exploit, evasion, or offensive security instructions.',
+  'Summarize only public metadata such as ETH balance, contract flag, source verification flag, and recent transaction count.',
+  'When done, print exactly one line on stdout starting with VERDICT: followed by a JSON object describing your summary (e.g. VERDICT: {"score":50,"label":"INCONCLUSIVE","reasons":[...]}).',
 ].join(' ');
 
 // Locate the compiled rugcheck-mcp entry point relative to this orchestrator
@@ -45,18 +33,29 @@ function registerMcpServer(): void {
   } catch {
     // not registered yet — fine
   }
+
+  const mcpEnvArgs = [
+    '--env',
+    `APIFY_PAYMENT_MODE=${env.APIFY_PAYMENT_MODE}`,
+    '--env',
+    `BASESCAN_DEEP_ACTOR_ID=${env.BASESCAN_DEEP_ACTOR_ID}`,
+    '--env',
+    `APIFY_BASE_URL=${env.APIFY_BASE_URL}`,
+  ];
+
+  if (env.APIFY_PAYMENT_MODE === 'token') {
+    mcpEnvArgs.push('--env', `APIFY_TOKEN=${env.APIFY_TOKEN}`);
+  } else {
+    mcpEnvArgs.push('--env', `WALLET_PRIVATE_KEY=${env.WALLET_PRIVATE_KEY}`);
+  }
+
   execFileSync(
     env.CODEX_BIN,
     [
       'mcp',
       'add',
       env.MCP_SERVER_NAME,
-      '--env',
-      `WALLET_PRIVATE_KEY=${env.WALLET_PRIVATE_KEY}`,
-      '--env',
-      `BASESCAN_DEEP_ACTOR_ID=${env.BASESCAN_DEEP_ACTOR_ID}`,
-      '--env',
-      `APIFY_BASE_URL=${env.APIFY_BASE_URL}`,
+      ...mcpEnvArgs,
       '--',
       'node',
       MCP_ENTRY,
@@ -71,13 +70,12 @@ const bus = new EventBus();
 
 const spawn = spawnFactory({
   command: env.CODEX_BIN,
-  args: ({ address }) => [
-    'exec',
-    '--skip-git-repo-check',
-    '--sandbox',
-    'workspace-write',
-    `${SYSTEM_PROMPT}\n\nInvestigate ${address} on Base. Budget: ${env.INVESTIGATION_BUDGET_USDC} USDC.`,
-  ],
+  args: ({ address }) =>
+    buildCodexExecArgs({
+      address,
+      budgetUsdc: env.INVESTIGATION_BUDGET_USDC,
+      systemPrompt: SYSTEM_PROMPT,
+    }),
   env: {
     ...(env.OPENAI_API_KEY ? { OPENAI_API_KEY: env.OPENAI_API_KEY } : {}),
   },

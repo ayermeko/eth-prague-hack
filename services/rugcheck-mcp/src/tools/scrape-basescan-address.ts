@@ -1,10 +1,10 @@
-import type { X402Client, X402Response, PaymentEvent } from '@rugsleuth/x402-client';
+import type { PaymentEvent } from '@rugsleuth/x402-client';
+import type { ApifyActorClient } from '../apify-client.js';
 import { emit } from '../events.js';
 
 export interface ScrapeBasescanAddressInput {
   address: string;
-  client: X402Client;
-  apifyBaseUrl: string;
+  actorClient: ApifyActorClient;
   actorId: string;
 }
 
@@ -19,30 +19,28 @@ export interface ScrapeBasescanAddressOutput {
 }
 
 type ApifyDatasetItems = Array<{
-  address: string;
-  ethBalance: string | null;
-  isContract: boolean;
-  verified: boolean;
-  latestTxs: string[];
-  scrapedAt: string;
+  address?: string;
+  ethBalance?: string | null;
+  isContract?: boolean;
+  verified?: boolean;
+  latestTxs?: string[];
+  latestTransactions?: string[];
+  scrapedAt?: string;
 }>;
 
 export async function scrapeBasescanAddress(
   input: ScrapeBasescanAddressInput,
 ): Promise<ScrapeBasescanAddressOutput> {
-  const { address, client, apifyBaseUrl, actorId } = input;
+  const { address, actorClient, actorId } = input;
   const tool = 'scrape_basescan_address';
   const start = Date.now();
   emit({ kind: 'tool.start', tool, args: { address } });
 
-  const url = `${apifyBaseUrl}/v2/acts/${encodeURIComponent(actorId)}/run-sync-get-dataset-items`;
-
   try {
-    const res = (await client.fetch({
-      url,
-      method: 'POST',
-      body: { address },
-    })) as X402Response<ApifyDatasetItems>;
+    const res = await actorClient.runActor<ApifyDatasetItems>({
+      actorId,
+      input: { address },
+    });
 
     for (const p of res.payments) {
       emit({
@@ -60,12 +58,12 @@ export async function scrapeBasescanAddress(
     if (!item) throw new Error('Actor returned no dataset items');
 
     const out: ScrapeBasescanAddressOutput = {
-      address: item.address,
-      ethBalance: item.ethBalance,
-      isContract: item.isContract,
-      verified: item.verified,
-      latestTxs: item.latestTxs,
-      scrapedAt: item.scrapedAt,
+      address: item.address ?? address,
+      ethBalance: item.ethBalance ?? null,
+      isContract: item.isContract ?? false,
+      verified: item.verified ?? false,
+      latestTxs: item.latestTxs ?? item.latestTransactions ?? [],
+      scrapedAt: item.scrapedAt ?? new Date().toISOString(),
       payments: res.payments,
     };
 

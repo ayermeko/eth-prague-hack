@@ -8,19 +8,42 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { createX402Client } from '@rugsleuth/x402-client';
+import { createApifyActorClient } from './apify-client.js';
 import { scrapeBasescanAddress } from './tools/scrape-basescan-address.js';
 
-const env = z
-  .object({
-    WALLET_PRIVATE_KEY: z
-      .string()
-      .regex(/^0x[a-fA-F0-9]{64}$/, 'WALLET_PRIVATE_KEY must be a 0x-prefixed 64-hex-char string'),
-    APIFY_BASE_URL: z.string().url().default('https://api.apify.com'),
-    BASESCAN_DEEP_ACTOR_ID: z.string().min(1),
-  })
-  .parse(process.env);
+const baseEnv = z.object({
+  APIFY_PAYMENT_MODE: z.enum(['token', 'x402']).default('x402'),
+  APIFY_BASE_URL: z.string().url().default('https://api.apify.com'),
+  BASESCAN_DEEP_ACTOR_ID: z.string().min(1),
+  APIFY_TOKEN: z.string().optional(),
+  WALLET_PRIVATE_KEY: z.string().optional(),
+});
 
-const client = createX402Client({ privateKey: env.WALLET_PRIVATE_KEY as `0x${string}` });
+const env = baseEnv.parse(process.env);
+
+const actorClient =
+  env.APIFY_PAYMENT_MODE === 'token'
+    ? createApifyActorClient({
+        mode: 'token',
+        apifyBaseUrl: env.APIFY_BASE_URL,
+        apifyToken: z
+          .string()
+          .min(1, 'APIFY_TOKEN is required when APIFY_PAYMENT_MODE=token')
+          .parse(env.APIFY_TOKEN),
+      })
+    : createApifyActorClient({
+        mode: 'x402',
+        apifyBaseUrl: env.APIFY_BASE_URL,
+        x402Client: createX402Client({
+          privateKey: z
+            .string()
+            .regex(
+              /^0x[a-fA-F0-9]{64}$/,
+              'WALLET_PRIVATE_KEY must be a 0x-prefixed 64-hex-char string',
+            )
+            .parse(env.WALLET_PRIVATE_KEY) as `0x${string}`,
+        }),
+      });
 
 const server = new Server(
   { name: 'rugcheck-mcp', version: '0.1.0' },
@@ -56,8 +79,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
 
   const result = await scrapeBasescanAddress({
     address: args.address,
-    client,
-    apifyBaseUrl: env.APIFY_BASE_URL,
+    actorClient,
     actorId: env.BASESCAN_DEEP_ACTOR_ID,
   });
 

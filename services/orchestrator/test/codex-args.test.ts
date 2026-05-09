@@ -1,0 +1,15 @@
+import { describe, expect, it } from 'vitest';
+import { buildCodexExecArgs } from '../src/codex-args.js';
+
+describe('buildCodexExecArgs', () => {
+  it('bypasses interactive approvals so non-interactive MCP calls can run', () => {
+    const args = buildCodexExecArgs({
+      address: '0x1bd831237695a48f3fb4413faedd77482371df61',
+      budgetUsdc: 2,
+      systemPrompt: 'system',
+    });
+
+    expect(args).toContain('--dangerously-bypass-approvals-and-sandbox');
+    expect(args.at(-1)).toContain('Investigate 0x1bd831237695a48f3fb4413faedd77482371df61');
+  });
+});
