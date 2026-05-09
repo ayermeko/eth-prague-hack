@@ -3,6 +3,10 @@
 // then exits. Used by the mock e2e test.
 import { spawn } from 'node:child_process';
 
+if (process.argv[2] === 'mcp') {
+  process.exit(0);
+}
+
 console.log('plan: scrape_basescan_address');
 const mcp = spawn('node', ['services/rugcheck-mcp/dist/index.js'], {
   stdio: ['pipe', 'pipe', 'inherit'],

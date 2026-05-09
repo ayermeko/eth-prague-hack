@@ -2,4 +2,234 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body { background: #0b0b0d; color: #e7e7ea; }
+html,
+body {
+  background: #08090a;
+  color: #e7e7ea;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input {
+  border-radius: 0;
+}
+
+.status-dot {
+  display: inline-block;
+  height: 9px;
+  width: 9px;
+  background: #71717a;
+}
+
+.status-dot[data-running="true"] {
+  background: #34d399;
+  box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.14);
+}
+
+.workflow-shell {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #27272a;
+  background: #050506;
+}
+
+.workflow-canvas {
+  position: relative;
+  height: 560px;
+  overflow: auto;
+  background-color: #09090b;
+  background-image:
+    radial-gradient(circle, rgba(113, 113, 122, 0.34) 1px, transparent 1px),
+    linear-gradient(rgba(39, 39, 42, 0.45) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(39, 39, 42, 0.45) 1px, transparent 1px);
+  background-position: 0 0, 0 0, 0 0;
+  background-size: 20px 20px, 80px 80px, 80px 80px;
+}
+
+.workflow-canvas::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(8, 9, 10, 0.04), rgba(8, 9, 10, 0.72));
+}
+
+.workflow-scaled-space {
+  position: relative;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+.workflow-content {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: left top;
+}
+
+.workflow-zoom-button {
+  height: 30px;
+  width: 34px;
+  color: #e4e4e7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.workflow-zoom-button:hover,
+.workflow-zoom-fit:hover {
+  background: #18181b;
+}
+
+.workflow-zoom-fit {
+  height: 30px;
+  border-left: 1px solid #27272a;
+  padding: 0 10px;
+  color: #a1a1aa;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.workflow-node {
+  position: absolute;
+  width: 152px;
+  min-height: 112px;
+  border: 1px solid #3f3f46;
+  background: #111113;
+  padding: 12px;
+  text-align: left;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.workflow-node:hover,
+.workflow-node-selected {
+  border-color: #e4e4e7;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+  transform: translateY(-1px);
+}
+
+.workflow-node-waiting {
+  opacity: 0.62;
+}
+
+.workflow-node-running {
+  border-color: #38bdf8;
+  background: #061016;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.2), 0 0 30px rgba(56, 189, 248, 0.08);
+}
+
+.workflow-node-success {
+  border-color: #34d399;
+  background: #07110d;
+}
+
+.workflow-node-failed {
+  border-color: #fb7185;
+  background: #16070a;
+}
+
+.workflow-port {
+  display: inline-block;
+  height: 10px;
+  width: 10px;
+  border: 1px solid #71717a;
+  background: #050506;
+}
+
+.workflow-info {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  height: 18px;
+  min-width: 18px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #52525b;
+  color: #a1a1aa;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.workflow-info:hover {
+  border-color: #34d399;
+  color: #34d399;
+}
+
+.workflow-info-popover {
+  pointer-events: none;
+  position: absolute;
+  right: -1px;
+  top: 26px;
+  z-index: 20;
+  display: none;
+  width: 240px;
+  border: 1px solid #3f3f46;
+  background: #050506;
+  padding: 10px;
+  color: #d4d4d8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.42);
+}
+
+.workflow-info:hover .workflow-info-popover {
+  display: block;
+}
+
+.workflow-status-dot {
+  display: inline-block;
+  height: 8px;
+  width: 8px;
+  background: #71717a;
+}
+
+.workflow-node-running .workflow-status-dot {
+  background: #38bdf8;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.14);
+}
+
+.workflow-node-success .workflow-status-dot {
+  background: #34d399;
+}
+
+.workflow-node-failed .workflow-status-dot {
+  background: #fb7185;
+}
+
+.workflow-link {
+  stroke: #3f3f46;
+  stroke-width: 2;
+}
+
+.workflow-link-active {
+  stroke: #34d399;
+  stroke-width: 2.5;
+  stroke-dasharray: 8 8;
+  animation: workflow-flow 900ms linear infinite;
+}
+
+@keyframes workflow-flow {
+  from {
+    stroke-dashoffset: 16;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (max-width: 1024px) {
+  .workflow-canvas {
+    height: 560px;
+  }
+}

@@ -31,8 +31,9 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
+      'Connection': 'keep-alive',
       'X-Accel-Buffering': 'no',
+      'Access-Control-Allow-Origin': '*'
     });
 
     const send = (event: InvestigationEvent): void => {
@@ -41,6 +42,8 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
 
     const unsub = opts.bus.subscribe(req.params.id, send);
     req.raw.on('close', unsub);
+    
+    reply.hijack();
   });
 
   return app;

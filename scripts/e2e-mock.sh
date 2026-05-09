@@ -8,16 +8,26 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 # 1. Start a mock x402 server in the background (uses the test fixture).
+rm -f /tmp/rs-mock.log
 npx tsx -e '
 import("./packages/x402-client/test/mock-server.ts").then(async (mod) => {
-  const m = await mod.startMockServer({});
+  const m = await mod.startMockServer({
+    resultBody: [{
+      address: "0xc1fcc4300305a415a7ea894f71a0694e9f7831d3",
+      ethBalance: "0.01 ETH",
+      isContract: true,
+      verified: false,
+      latestTxs: ["mock-tx-1", "mock-tx-2"],
+      scrapedAt: "2026-05-08T12:00:00.000Z"
+    }]
+  });
   console.log(JSON.stringify({ url: m.url }));
   process.stdin.resume();
 });' > /tmp/rs-mock.log &
 MOCK_PID=$!
 # tsx has more cold-start overhead than plain node, so wait until the mock
 # server has logged its URL before reading it.
-for _ in 1 2 3 4 5 6 7 8 9 10; do
+for _ in $(seq 1 30); do
   if [ -s /tmp/rs-mock.log ]; then break; fi
   sleep 1
 done
@@ -47,4 +57,4 @@ ID="$(curl -s -X POST http://localhost:4000/investigations \
   -H 'content-type: application/json' \
   -d '{"address":"0xc1fcc4300305a415a7ea894f71a0694e9f7831d3"}' | jq -r .id)"
 echo "Investigation: $ID"
-curl -N "http://localhost:4000/investigations/$ID/events"
+curl --no-progress-meter --max-time 12 -N "http://localhost:4000/investigations/$ID/events" || true

@@ -1,5 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import { AppNav } from '../components/AppNav';
 
 export const metadata: Metadata = {
   title: 'RugSleuth',
@@ -9,7 +10,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen font-mono">{children}</body>
+      <body className="min-h-screen font-mono">
+        <AppNav />
+        {children}
+      </body>
     </html>
   );
 }
