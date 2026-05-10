@@ -11,6 +11,14 @@
       "editor": "textfield",
       "pattern": "^0x[a-fA-F0-9]{40}$",
       "prefill": "0xc1fcc4300305a415a7ea894f71a0694e9f7831d3"
+    },
+    "mode": {
+      "title": "Scrape mode",
+      "type": "string",
+      "description": "address = single page; deployer-history = list contracts created by this wallet",
+      "editor": "select",
+      "enum": ["address", "deployer-history"],
+      "default": "address"
     }
   },
   "required": ["address"]

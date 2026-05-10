@@ -6,6 +6,11 @@
       "title": "Address fetched",
       "description": "One BaseScan address page scraped.",
       "priceUsd": 0.05
+    },
+    "deployer-history-fetched": {
+      "title": "Deployer history fetched",
+      "description": "Wallet's full contract-deployment history scraped (one call covers the wallet page + all contract drill-downs).",
+      "priceUsd": 0.08
     }
   }
 }

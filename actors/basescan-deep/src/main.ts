@@ -5,6 +5,7 @@ import { router } from './routes.js';
 
 interface Input {
   address: string;
+  mode?: 'address' | 'deployer-history';
 }
 
 const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
@@ -13,12 +14,16 @@ await Actor.init();
 
 const input = (await Actor.getInput<Input>()) ?? ({} as Input);
 const address = input.address?.trim();
+const mode = input.mode ?? 'address';
 
 if (!address || !ADDRESS_RE.test(address)) {
   await Actor.fail('Invalid address: expected 0x-prefixed 40 hex characters.');
 }
 
-const url = `https://basescan.org/address/${address}`;
+const url =
+  mode === 'deployer-history'
+    ? `https://basescan.org/address/${address}#contractscreated`
+    : `https://basescan.org/address/${address}`;
 
 const proxyConfiguration = await Actor.createProxyConfiguration({ checkAccess: false });
 
@@ -27,12 +32,10 @@ const crawler = new PlaywrightCrawler({
   maxRequestsPerCrawl: 1,
   requestHandler: router,
   launchContext: {
-    launchOptions: {
-      args: ['--disable-gpu'],
-    },
+    launchOptions: { args: ['--disable-gpu'] },
   },
 });
 
-await crawler.run([{ url, userData: { address } }]);
+await crawler.run([{ url, userData: { address, mode } }]);
 
 await Actor.exit();

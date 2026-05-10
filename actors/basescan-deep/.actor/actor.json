@@ -23,6 +23,11 @@
             "eventTitle": "Address fetched",
             "eventDescription": "One BaseScan address page scraped (balance, contract status, recent txs).",
             "eventPriceUsd": 0.05
+          },
+          "deployer-history-fetched": {
+            "eventTitle": "Deployer history fetched",
+            "eventDescription": "Wallet's contract-deployment history scraped (one call covers the wallet page + drill-downs).",
+            "eventPriceUsd": 0.08
           }
         }
       }
