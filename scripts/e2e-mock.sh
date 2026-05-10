@@ -55,6 +55,8 @@ APIFY_PAYMENT_MODE=x402 \
 WALLET_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
 APIFY_BASE_URL="$MOCK_URL" \
 BASESCAN_DEEP_ACTOR_ID=team/basescan-deep \
+X_SCRAPER_ACTOR_ID=team/x-scraper \
+METASLEUTH_DEEP_ACTOR_ID=team/metasleuth-deep \
 APIFY_TOKEN= \
 OPENAI_API_KEY=sk-test \
 ORCHESTRATOR_PORT="$ORCHESTRATOR_PORT" \
@@ -94,3 +96,8 @@ fi
 grep -q '"type":"mcp.event".*"status":"settled"' "$EVENTS_FILE"
 grep -q '"type":"verdict.rendered"' "$EVENTS_FILE"
 grep -q '"type":"investigation.completed".*"reason":"verdict"' "$EVENTS_FILE"
+
+for tool in scrape_x_mentions list_deployer_contracts check_scam_blacklists analyze_wallet_cluster; do
+  grep -q "\"kind\":\"tool.start\".*\"tool\":\"$tool\"" "$EVENTS_FILE"
+  grep -q "\"kind\":\"tool.end\".*\"tool\":\"$tool\"" "$EVENTS_FILE"
+done

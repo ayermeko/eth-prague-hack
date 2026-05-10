@@ -7,7 +7,7 @@ if (process.argv[2] === 'mcp') {
   process.exit(0);
 }
 
-console.log('plan: scrape_basescan_address');
+console.log('plan: scrape_basescan_address scrape_x_mentions list_deployer_contracts check_scam_blacklists analyze_wallet_cluster');
 const mcp = spawn('node', ['services/rugcheck-mcp/dist/index.js'], {
   stdio: ['pipe', 'pipe', 'inherit'],
 });
@@ -28,6 +28,46 @@ setTimeout(() => {
     },
   });
 }, 200);
+
+setTimeout(() => {
+  send({
+    method: 'tools/call',
+    params: {
+      name: 'scrape_x_mentions',
+      arguments: { address: '0xc1fcc4300305a415a7ea894f71a0694e9f7831d3' },
+    },
+  });
+}, 800);
+
+setTimeout(() => {
+  send({
+    method: 'tools/call',
+    params: {
+      name: 'list_deployer_contracts',
+      arguments: { address: '0xc1fcc4300305a415a7ea894f71a0694e9f7831d3' },
+    },
+  });
+}, 1_400);
+
+setTimeout(() => {
+  send({
+    method: 'tools/call',
+    params: {
+      name: 'check_scam_blacklists',
+      arguments: { address: '0xc1fcc4300305a415a7ea894f71a0694e9f7831d3' },
+    },
+  });
+}, 2_000);
+
+setTimeout(() => {
+  send({
+    method: 'tools/call',
+    params: {
+      name: 'analyze_wallet_cluster',
+      arguments: { address: '0xc1fcc4300305a415a7ea894f71a0694e9f7831d3' },
+    },
+  });
+}, 2_600);
 
 setTimeout(() => {
   const verdict = {
