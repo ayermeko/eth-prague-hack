@@ -38,4 +38,10 @@ describe('WalletCache', () => {
     c.set('0xABC', 'tool-a', 'v', 10_000);
     expect(c.get('0xabc', 'tool-a')).toBe('v');
   });
+
+  it('throws when ttlMs is zero or negative', () => {
+    const c = new WalletCache();
+    expect(() => c.set('0xabc', 'tool-a', 'v', 0)).toThrow(/ttlMs must be positive/);
+    expect(() => c.set('0xabc', 'tool-a', 'v', -1)).toThrow(/ttlMs must be positive/);
+  });
 });

@@ -13,16 +13,20 @@ export class WalletCache {
   }
 
   get<T>(wallet: string, tool: string): T | null {
-    const entry = this.store.get(this.key(wallet, tool));
+    const k = this.key(wallet, tool);
+    const entry = this.store.get(k);
     if (!entry) return null;
     if (entry.expiresAt <= Date.now()) {
-      this.store.delete(this.key(wallet, tool));
+      this.store.delete(k);
       return null;
     }
     return entry.value as T;
   }
 
   set(wallet: string, tool: string, value: unknown, ttlMs: number): void {
+    if (ttlMs <= 0) {
+      throw new Error(`WalletCache.set: ttlMs must be positive, got ${ttlMs}`);
+    }
     this.store.set(this.key(wallet, tool), {
       value,
       expiresAt: Date.now() + ttlMs,
