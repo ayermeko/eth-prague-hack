@@ -74,6 +74,25 @@ function registerMcpServer(): { ok: boolean; reason?: string } {
     mcpEnvArgs.push('--env', `WALLET_PRIVATE_KEY=${env.WALLET_PRIVATE_KEY}`);
   }
 
+  // Forward optional wallet-research env vars only when set, so the MCP
+  // server's own defaults stay authoritative when the operator hasn't
+  // overridden them.
+  if (env.X_SCRAPER_ACTOR_ID) {
+    mcpEnvArgs.push('--env', `X_SCRAPER_ACTOR_ID=${env.X_SCRAPER_ACTOR_ID}`);
+  }
+  if (env.METASLEUTH_DEEP_ACTOR_ID) {
+    mcpEnvArgs.push('--env', `METASLEUTH_DEEP_ACTOR_ID=${env.METASLEUTH_DEEP_ACTOR_ID}`);
+  }
+  if (env.GOPLUS_BASE_URL) {
+    mcpEnvArgs.push('--env', `GOPLUS_BASE_URL=${env.GOPLUS_BASE_URL}`);
+  }
+  if (env.SCAMSNIFFER_URL) {
+    mcpEnvArgs.push('--env', `SCAMSNIFFER_URL=${env.SCAMSNIFFER_URL}`);
+  }
+  if (env.GOPLUS_CHAIN_ID !== undefined) {
+    mcpEnvArgs.push('--env', `GOPLUS_CHAIN_ID=${env.GOPLUS_CHAIN_ID}`);
+  }
+
   try {
     execFileSync(
       env.CODEX_BIN,

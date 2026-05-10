@@ -129,77 +129,84 @@ const demoTimeline: Array<{ delay: number; event: UnstampedEvent }> = [
     delay: 4500,
     event: {
       type: 'codex.line',
-      line: 'Finding: contract is unverified and has very little transaction history. Buying deployer and liquidity signals next.',
+      line: 'Finding: contract is unverified and has sparse history. Pulling free reputation lookups before paying for deeper signals.',
     },
   },
   {
-    delay: 5300,
+    delay: 5100,
     event: {
       type: 'mcp.event',
-      payload: { kind: 'tool.start', tool: 'scrape_dexscreener_pair', args: { address: DEMO_ADDRESS } },
+      payload: { kind: 'tool.start', tool: 'check_scam_blacklists', args: { address: DEMO_ADDRESS } },
     },
   },
   {
-    delay: 5900,
+    delay: 5700,
     event: {
       type: 'mcp.event',
-      payload: {
-        kind: 'payment',
-        tool: 'scrape_dexscreener_pair',
-        status: 'required',
-        amountUsdc: '0.100000',
-        payTo: '0x0000000000000000000000000000000000000bee',
-        ppeEvent: 'pair-fetched',
-      },
+      payload: { kind: 'tool.end', tool: 'check_scam_blacklists', ok: true, ms: 412 },
     },
   },
   {
-    delay: 6500,
-    event: {
-      type: 'mcp.event',
-      payload: {
-        kind: 'payment',
-        tool: 'scrape_dexscreener_pair',
-        status: 'signed',
-        amountUsdc: '0.100000',
-        payTo: '0x0000000000000000000000000000000000000bee',
-        ppeEvent: 'pair-fetched',
-      },
-    },
-  },
-  {
-    delay: 7200,
-    event: {
-      type: 'mcp.event',
-      payload: {
-        kind: 'payment',
-        tool: 'scrape_dexscreener_pair',
-        status: 'settled',
-        amountUsdc: '0.100000',
-        payTo: '0x0000000000000000000000000000000000000bee',
-        ppeEvent: 'pair-fetched',
-      },
-    },
-  },
-  {
-    delay: 7600,
-    event: {
-      type: 'mcp.event',
-      payload: { kind: 'tool.end', tool: 'scrape_dexscreener_pair', ok: true, ms: 1044 },
-    },
-  },
-  {
-    delay: 8400,
+    delay: 6200,
     event: {
       type: 'codex.line',
-      line: 'Finding: liquidity is thin, LP is not locked, and the deployer has repeated launches in the last 30 days.',
+      line: 'Free GoPlus + ScamSniffer lookup: 1 hit (cybercrime, high severity). Worth paying to confirm with deployer history.',
     },
   },
   {
-    delay: 9200,
+    delay: 6800,
     event: {
       type: 'mcp.event',
-      payload: { kind: 'tool.start', tool: 'scrape_twitter_profile', args: { handle: 'BaseMoonDemo' } },
+      payload: { kind: 'tool.start', tool: 'list_deployer_contracts', args: { address: DEMO_ADDRESS } },
+    },
+  },
+  {
+    delay: 7300,
+    event: {
+      type: 'mcp.event',
+      payload: {
+        kind: 'payment',
+        tool: 'list_deployer_contracts',
+        status: 'required',
+        amountUsdc: '0.080000',
+        payTo: '0x0000000000000000000000000000000000000bee',
+        ppeEvent: 'deployer-history-fetched',
+      },
+    },
+  },
+  {
+    delay: 7700,
+    event: {
+      type: 'mcp.event',
+      payload: {
+        kind: 'payment',
+        tool: 'list_deployer_contracts',
+        status: 'settled',
+        amountUsdc: '0.080000',
+        payTo: '0x0000000000000000000000000000000000000bee',
+        ppeEvent: 'deployer-history-fetched',
+      },
+    },
+  },
+  {
+    delay: 8300,
+    event: {
+      type: 'mcp.event',
+      payload: { kind: 'tool.end', tool: 'list_deployer_contracts', ok: true, ms: 998 },
+    },
+  },
+  {
+    delay: 8900,
+    event: {
+      type: 'codex.line',
+      line: 'Deployer launched 14 contracts in the last 30 days; 11 of 14 are unverified. Serial-deployer pattern. Checking funding cluster.',
+    },
+  },
+  {
+    delay: 9400,
+    event: {
+      type: 'mcp.event',
+      payload: { kind: 'tool.start', tool: 'analyze_wallet_cluster', args: { address: DEMO_ADDRESS, maxRelated: 20 } },
     },
   },
   {
@@ -208,57 +215,95 @@ const demoTimeline: Array<{ delay: number; event: UnstampedEvent }> = [
       type: 'mcp.event',
       payload: {
         kind: 'payment',
-        tool: 'scrape_twitter_profile',
+        tool: 'analyze_wallet_cluster',
         status: 'settled',
-        amountUsdc: '0.300000',
+        amountUsdc: '0.100000',
         payTo: '0x0000000000000000000000000000000000000bee',
-        ppeEvent: 'profile-fetched',
+        ppeEvent: 'cluster-fetched',
       },
     },
   },
   {
-    delay: 10400,
+    delay: 10500,
     event: {
       type: 'mcp.event',
-      payload: { kind: 'tool.end', tool: 'scrape_twitter_profile', ok: true, ms: 1288 },
+      payload: { kind: 'tool.end', tool: 'analyze_wallet_cluster', ok: true, ms: 1102 },
     },
   },
   {
-    delay: 11200,
+    delay: 11100,
     event: {
       type: 'codex.line',
-      line: 'Decision: evidence is strong enough. Stop spending and render a verdict.',
+      line: 'Funding source classified as mixer (Tornado Cash 1 ETH). Cross-checking with X mentions.',
+    },
+  },
+  {
+    delay: 11600,
+    event: {
+      type: 'mcp.event',
+      payload: { kind: 'tool.start', tool: 'scrape_x_mentions', args: { address: DEMO_ADDRESS } },
     },
   },
   {
     delay: 12000,
     event: {
-      type: 'verdict.rendered',
-      verdict: {
-        score: 92,
-        label: 'LIKELY_RUG',
-        confidence: 'high',
-        reasons: [
-          'Contract is unverified, which blocks source-level review.',
-          'Liquidity is thin and the LP is not locked.',
-          'Deployer pattern matches repeated short-lived launches.',
-          'Social account is newly created with low-quality activity.',
-        ],
-        evidence: [
-          { source: 'BaseScan', finding: 'Unverified contract and sparse history', costUsdc: '0.05' },
-          { source: 'Dexscreener', finding: 'Thin unlocked liquidity', costUsdc: '0.10' },
-          { source: 'Social scrape', finding: 'Fresh profile with weak signal quality', costUsdc: '0.30' },
-        ],
-        durationSec: 72,
+      type: 'mcp.event',
+      payload: {
+        kind: 'payment',
+        tool: 'scrape_x_mentions',
+        status: 'settled',
+        amountUsdc: '0.040000',
+        payTo: '0x0000000000000000000000000000000000000bee',
+        ppeEvent: 'tweet-fetched',
       },
     },
   },
   {
     delay: 12600,
-    event: { type: 'codex.line', line: 'VERDICT: {"score":92,"label":"LIKELY_RUG","spent":"0.45"}' },
+    event: {
+      type: 'mcp.event',
+      payload: { kind: 'tool.end', tool: 'scrape_x_mentions', ok: true, ms: 944 },
+    },
   },
   {
     delay: 13100,
+    event: {
+      type: 'codex.line',
+      line: '5 mentions found on X, 2 explicitly call this address a scam. Evidence is conclusive.',
+    },
+  },
+  {
+    delay: 13700,
+    event: {
+      type: 'verdict.rendered',
+      verdict: {
+        score: 94,
+        label: 'LIKELY_RUG',
+        confidence: 'high',
+        reasons: [
+          'Contract is unverified, blocking source-level review.',
+          'Address is flagged on GoPlus with a high-severity cybercrime tag.',
+          'Deployer is a serial issuer: 14 contracts in 30 days, 79% unverified.',
+          'Funding traces back to Tornado Cash — privacy-mixer origin.',
+          'On-platform sentiment includes explicit scam complaints.',
+        ],
+        evidence: [
+          { source: 'BaseScan address', finding: 'Unverified contract, sparse history', costUsdc: '0.05' },
+          { source: 'GoPlus + ScamSniffer', finding: 'Cybercrime hit (high severity)', costUsdc: '0.00' },
+          { source: 'BaseScan deployer history', finding: '14 contracts in 30 days, 79% unverified', costUsdc: '0.08' },
+          { source: 'MetaSleuth cluster', finding: 'Funded by Tornado Cash mixer', costUsdc: '0.10' },
+          { source: 'X mentions', finding: '2 of 5 mentions explicitly flag as scam', costUsdc: '0.04' },
+        ],
+        durationSec: 14,
+      },
+    },
+  },
+  {
+    delay: 14200,
+    event: { type: 'codex.line', line: 'VERDICT: {"score":94,"label":"LIKELY_RUG","spent":"0.27"}' },
+  },
+  {
+    delay: 14700,
     event: { type: 'investigation.completed', reason: 'verdict' },
   },
 ];
