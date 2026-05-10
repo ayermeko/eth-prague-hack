@@ -1,5 +1,6 @@
 import { PlaywrightCrawler } from '@crawlee/playwright';
 import { Actor } from 'apify';
+
 import { router } from './routes.js';
 
 interface Input {

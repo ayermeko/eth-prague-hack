@@ -1,4 +1,19 @@
 // services/orchestrator/src/events.ts
+export type VerdictLabel =
+  | 'LIKELY_RUG'
+  | 'SUSPICIOUS'
+  | 'INCONCLUSIVE'
+  | 'LIKELY_LEGIT';
+
+export interface VerdictPayload {
+  score: number;
+  label: VerdictLabel;
+  confidence: 'low' | 'medium' | 'high';
+  reasons: string[];
+  evidence: Array<{ source: string; finding: string; costUsdc: string }>;
+  durationSec: number;
+}
+
 export type InvestigationEvent =
   | { type: 'codex.line'; line: string; ts: string }
   | {
@@ -17,6 +32,7 @@ export type InvestigationEvent =
             error?: string;
           };
     }
+  | { type: 'verdict.rendered'; ts: string; verdict: VerdictPayload }
   | { type: 'budget.exceeded'; spentUsdc: string; ts: string }
   | { type: 'investigation.completed'; reason: 'verdict' | 'timeout' | 'budget' | 'error'; ts: string };
 

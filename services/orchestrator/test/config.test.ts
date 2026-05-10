@@ -27,12 +27,22 @@ describe('parseConfig', () => {
     ).toThrow('APIFY_TOKEN is required when APIFY_PAYMENT_MODE=token');
   });
 
-  it('rejects x402 mode without WALLET_PRIVATE_KEY', () => {
+  it('accepts x402 mode without WALLET_PRIVATE_KEY (boot-time soft)', () => {
+    const config = parseConfig({
+      ...baseEnv,
+      APIFY_PAYMENT_MODE: 'x402',
+    });
+    expect(config.APIFY_PAYMENT_MODE).toBe('x402');
+    expect(config.WALLET_PRIVATE_KEY).toBeUndefined();
+  });
+
+  it('rejects malformed WALLET_PRIVATE_KEY in x402 mode', () => {
     expect(() =>
       parseConfig({
         ...baseEnv,
         APIFY_PAYMENT_MODE: 'x402',
+        WALLET_PRIVATE_KEY: '0xnot-hex',
       }),
-    ).toThrow('WALLET_PRIVATE_KEY is required when APIFY_PAYMENT_MODE=x402');
+    ).toThrow('WALLET_PRIVATE_KEY must be a 0x-prefixed 64-hex-char string when set');
   });
 });

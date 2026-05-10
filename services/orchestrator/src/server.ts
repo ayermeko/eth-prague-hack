@@ -3,17 +3,54 @@ import cors from '@fastify/cors';
 import { EventBus, InvestigationEvent } from './events.js';
 import { Investigations, InvestigationsOptions } from './investigations.js';
 import { parseAddress } from './validation.js';
+import {
+  fetchAgentWallet,
+  type AgentWalletResult,
+  type FetchAgentWalletOptions,
+} from './wallet.js';
 
 export interface BuildServerOptions {
   bus: EventBus;
   investigations: Investigations;
+  // Override hooks (used by tests). Defaults call mcpc on the live host.
+  fetchWallet?: (opts?: FetchAgentWalletOptions) => Promise<AgentWalletResult>;
+  walletCacheTtlMs?: number;
+  now?: () => number;
 }
+
+const DEFAULT_WALLET_CACHE_TTL_MS = 5_000;
 
 export function buildServer(opts: BuildServerOptions): FastifyInstance {
   const app = Fastify({ logger: true });
   app.register(cors, { origin: true });
 
+  // Cache successful wallet snapshots only — failures retry immediately so
+  // transient mcpc hiccups don't pin the dashboard on a stale error.
+  const fetchWallet = opts.fetchWallet ?? fetchAgentWallet;
+  const walletTtl = opts.walletCacheTtlMs ?? DEFAULT_WALLET_CACHE_TTL_MS;
+  const now = opts.now ?? Date.now;
+  let walletCache: { result: AgentWalletResult; at: number } | null = null;
+
   app.get('/health', async () => ({ ok: true }));
+
+  app.get('/agent/wallet', async (_req, reply) => {
+    if (walletCache && walletCache.result.ok && now() - walletCache.at < walletTtl) {
+      return walletCache.result.info;
+    }
+    const result = await fetchWallet();
+    if (result.ok) {
+      walletCache = { result, at: now() };
+      return result.info;
+    }
+    const status =
+      result.error.kind === 'mcpc_missing'
+        ? 503
+        : result.error.kind === 'no_wallet'
+          ? 404
+          : 500;
+    reply.code(status);
+    return { error: result.error.kind, message: result.error.message, hint: result.error.hint };
+  });
 
   app.post<{ Body: { address: string } }>('/investigations', async (req, reply) => {
     let address: string;

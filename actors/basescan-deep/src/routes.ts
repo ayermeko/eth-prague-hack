@@ -1,5 +1,5 @@
-import { Actor } from 'apify';
 import { createPlaywrightRouter } from '@crawlee/playwright';
+import { Actor } from 'apify';
 
 export const router = createPlaywrightRouter();
 

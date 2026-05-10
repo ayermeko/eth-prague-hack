@@ -1,12 +1,22 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve as pathResolve } from 'node:path';
+import { config as loadDotenv } from 'dotenv';
 import { parseConfig } from './config.js';
 import { EventBus } from './events.js';
 import { Investigations } from './investigations.js';
 import { spawnCodex } from './codex.js';
 import { buildServer, spawnFactory } from './server.js';
 import { buildCodexExecArgs } from './codex-args.js';
+
+// Resolve .env.local relative to this file (works for src/ via tsx and
+// dist/ via node) since `npm --workspace` runs scripts with cwd set to the
+// workspace, not the repo root. dotenv does not override variables already
+// set, so process.env wins for CI / inline overrides.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = pathResolve(__dirname, '..', '..', '..');
+loadDotenv({ path: pathResolve(REPO_ROOT, '.env.local') });
+loadDotenv({ path: pathResolve(REPO_ROOT, '.env') });
 
 const env = parseConfig(process.env);
 
@@ -30,20 +40,29 @@ const SYSTEM_PROMPT = [
   'When done, print exactly one final line on stdout beginning with VERDICT: followed by compact JSON with this shape: {"score":number,"label":"LIKELY_RUG|SUSPICIOUS|INCONCLUSIVE|LIKELY_LEGIT","confidence":number,"reasons":["..."],"evidence":[{"source":"...","finding":"..."}],"limitations":["..."]}.',
 ].join(' ');
 
-// Locate the compiled rugcheck-mcp entry point relative to this orchestrator
-// build. Works whether we're running from dist/ or via tsx from src/.
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const MCP_ENTRY = pathResolve(__dirname, '..', '..', 'rugcheck-mcp', 'dist', 'index.js');
+// Locate the compiled rugcheck-mcp entry point. Works whether we're running
+// from dist/ or via tsx from src/ since REPO_ROOT was resolved above.
+const MCP_ENTRY = pathResolve(REPO_ROOT, 'services', 'rugcheck-mcp', 'dist', 'index.js');
 
-// Re-register the MCP server at startup with the current env. This is
-// idempotent: remove first (ignore failure), then add. Keeps secrets out of
-// any persistent state across orchestrator restarts and ensures Codex sees the
-// fresh wallet key after .env.local edits.
-function registerMcpServer(): void {
+// Re-register the MCP server at startup with the current env. Idempotent:
+// remove first (ignore failure), then add. Soft-fails so the HTTP server can
+// still boot for the demo path even when codex is missing or the wallet key
+// is unset; a real investigation will surface the missing piece at request
+// time.
+function registerMcpServer(): { ok: boolean; reason?: string } {
+  // Always clear any prior registration so a stale wallet key from an earlier
+  // run cannot quietly sign payments. Soft-fails if codex is missing.
   try {
     execFileSync(env.CODEX_BIN, ['mcp', 'remove', env.MCP_SERVER_NAME], { stdio: 'pipe' });
   } catch {
-    // not registered yet — fine
+    // not registered yet, or codex CLI missing — both fine here.
+  }
+
+  if (env.APIFY_PAYMENT_MODE === 'x402' && !env.WALLET_PRIVATE_KEY) {
+    return { ok: false, reason: 'WALLET_PRIVATE_KEY is unset; live x402 runs will fail until you set it in .env.local' };
+  }
+  if (env.APIFY_PAYMENT_MODE === 'token' && !env.APIFY_TOKEN) {
+    return { ok: false, reason: 'APIFY_TOKEN is unset; live token-mode runs will fail until you set it' };
   }
 
   const mcpEnvArgs = [
@@ -61,22 +80,26 @@ function registerMcpServer(): void {
     mcpEnvArgs.push('--env', `WALLET_PRIVATE_KEY=${env.WALLET_PRIVATE_KEY}`);
   }
 
-  execFileSync(
-    env.CODEX_BIN,
-    [
-      'mcp',
-      'add',
-      env.MCP_SERVER_NAME,
-      ...mcpEnvArgs,
-      '--',
-      'node',
-      MCP_ENTRY,
-    ],
-    { stdio: 'pipe' },
-  );
+  try {
+    execFileSync(
+      env.CODEX_BIN,
+      ['mcp', 'add', env.MCP_SERVER_NAME, ...mcpEnvArgs, '--', 'node', MCP_ENTRY],
+      { stdio: 'pipe' },
+    );
+    return { ok: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, reason: `codex mcp add failed: ${message}` };
+  }
 }
 
-registerMcpServer();
+const mcpRegistration = registerMcpServer();
+if (!mcpRegistration.ok) {
+  // eslint-disable-next-line no-console
+  console.warn(`[orchestrator] MCP not registered — ${mcpRegistration.reason}`);
+  // eslint-disable-next-line no-console
+  console.warn('[orchestrator] HTTP server will still boot; the dashboard demo button works without MCP.');
+}
 
 const bus = new EventBus();
 

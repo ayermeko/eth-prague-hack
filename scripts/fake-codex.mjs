@@ -30,7 +30,20 @@ setTimeout(() => {
 }, 200);
 
 setTimeout(() => {
-  console.log('verdict: done');
+  const verdict = {
+    score: 78,
+    label: 'SUSPICIOUS',
+    confidence: 'medium',
+    reasons: [
+      'Contract source is unverified.',
+      'Sparse on-chain history for the address.',
+    ],
+    evidence: [
+      { source: 'BaseScan', finding: 'Unverified contract on a fresh address', costUsdc: '0.05' },
+    ],
+    durationSec: 4,
+  };
+  console.log(`VERDICT: ${JSON.stringify(verdict)}`);
   mcp.kill();
   process.exit(0);
 }, 5_000);

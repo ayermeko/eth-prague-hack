@@ -13,7 +13,9 @@
   "scripts": {
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
+    "build:agent": "npm --workspace packages/x402-client run build && npm --workspace services/rugcheck-mcp run build",
     "lint": "npm run lint --workspaces --if-present",
+    "predev:orchestrator": "npm run build:agent",
     "dev:orchestrator": "npm --workspace services/orchestrator run dev",
     "dev:dashboard": "npm --workspace apps/dashboard run dev"
   }
