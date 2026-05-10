@@ -6,7 +6,7 @@ const PREFIX = 'RSEVT ';
 
 export type McpEvent =
   | { kind: 'tool.start'; tool: string; args: Record<string, unknown> }
-  | { kind: 'tool.end'; tool: string; ok: boolean; error?: string; ms: number }
+  | { kind: 'tool.end'; tool: string; ok: boolean; error?: string; ms: number; cached?: boolean }
   | {
       kind: 'payment';
       tool: string;
