@@ -8,7 +8,9 @@ export function buildCodexExecArgs(input: BuildCodexExecArgsInput): string[] {
   return [
     'exec',
     '--skip-git-repo-check',
-    '--dangerously-bypass-approvals-and-sandbox',
+    '--sandbox',
+    'read-only',
+    '--ephemeral',
     `${input.systemPrompt}
 
 Investigate ${input.address} on Base. Budget: ${input.budgetUsdc} USDC.`,
