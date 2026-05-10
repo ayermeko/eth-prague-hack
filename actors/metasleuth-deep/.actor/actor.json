@@ -1,0 +1,30 @@
+{
+  "$schema": "https://apify.com/schemas/v1/actor.ide.json",
+  "actorSpecification": 1,
+  "name": "metasleuth-deep",
+  "title": "MetaSleuth Deep (RugSleuth)",
+  "description": "Pay-Per-Event MetaSleuth wallet-cluster scraper for the RugSleuth investigator agent.",
+  "version": "0.1",
+  "meta": {
+    "templateId": "ts-crawlee-playwright-chrome",
+    "generatedBy": "Claude Opus 4.7"
+  },
+  "input": "./input_schema.json",
+  "output": "./output_schema.json",
+  "storages": { "dataset": "./dataset_schema.json" },
+  "pricingInfos": [
+    {
+      "pricingModel": "PAY_PER_EVENT",
+      "pricingPerEvent": {
+        "actorChargeEvents": {
+          "cluster-fetched": {
+            "eventTitle": "Cluster fetched",
+            "eventDescription": "One MetaSleuth wallet-cluster report scraped (funding source + related wallets).",
+            "eventPriceUsd": 0.10
+          }
+        }
+      }
+    }
+  ],
+  "dockerfile": "../Dockerfile"
+}

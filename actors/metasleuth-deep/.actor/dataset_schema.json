@@ -1,0 +1,19 @@
+{
+  "$schema": "https://apify.com/schemas/v1/dataset.ide.json",
+  "actorSpecification": 1,
+  "fields": {},
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": { "fields": ["address", "fundingSource", "clusterSize"] },
+      "display": {
+        "component": "table",
+        "properties": {
+          "address": { "label": "Address", "format": "text" },
+          "fundingSource": { "label": "Funding source", "format": "object" },
+          "clusterSize": { "label": "Cluster size", "format": "number" }
+        }
+      }
+    }
+  }
+}

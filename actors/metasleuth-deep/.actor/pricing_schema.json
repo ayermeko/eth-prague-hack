@@ -1,0 +1,11 @@
+{
+  "$schema": "https://apify.com/schemas/v1/pricing.ide.json",
+  "pricingModel": "PAY_PER_EVENT",
+  "events": {
+    "cluster-fetched": {
+      "title": "Cluster fetched",
+      "description": "One MetaSleuth wallet-cluster report scraped.",
+      "priceUsd": 0.10
+    }
+  }
+}
