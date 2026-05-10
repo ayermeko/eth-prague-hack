@@ -23,14 +23,21 @@ export const configSchema = z
       });
     }
 
+    // x402 mode: wallet key is required at request-time (the MCP layer
+    // re-validates), but the orchestrator boots without it so the demo and
+    // dashboard work on a fresh clone. We only fail boot when the key is
+    // *set* but malformed, so typos surface early.
     if (
       value.APIFY_PAYMENT_MODE === 'x402' &&
-      !/^0x[a-fA-F0-9]{64}$/.test(value.WALLET_PRIVATE_KEY ?? '')
+      value.WALLET_PRIVATE_KEY !== undefined &&
+      value.WALLET_PRIVATE_KEY !== '' &&
+      !/^0x[a-fA-F0-9]{64}$/.test(value.WALLET_PRIVATE_KEY)
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['WALLET_PRIVATE_KEY'],
-        message: 'WALLET_PRIVATE_KEY is required when APIFY_PAYMENT_MODE=x402',
+        message:
+          'WALLET_PRIVATE_KEY must be a 0x-prefixed 64-hex-char string when set',
       });
     }
   });

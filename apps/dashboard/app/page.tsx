@@ -31,7 +31,7 @@ export default function Page() {
       <AddressInput onSubmit={start} onDemo={runDemo} disabled={isRunning} />
       {error && <div className="text-rose-400 text-sm">{error}</div>}
 
-      <AgentWalletCard />
+      <AgentWalletCard events={events} />
       <WorkflowCanvas events={events} />
       <VerdictCard events={events} />
     </main>
