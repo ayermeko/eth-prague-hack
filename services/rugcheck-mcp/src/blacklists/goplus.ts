@@ -32,7 +32,8 @@ export interface FetchGoPlusOptions {
 
 export async function fetchGoPlusFlags(opts: FetchGoPlusOptions): Promise<GoPlusResult> {
   const fetchImpl = opts.fetch ?? globalThis.fetch;
-  const url = `https://api.gopluslabs.io/api/v1/address_security/${opts.address}?chain_id=${opts.chainId}`;
+  const baseUrl = process.env.GOPLUS_BASE_URL ?? 'https://api.gopluslabs.io';
+  const url = `${baseUrl}/api/v1/address_security/${opts.address}?chain_id=${opts.chainId}`;
   try {
     const res = await fetchImpl(url);
     if (!res.ok) return { ok: false, error: `goplus ${res.status}` };

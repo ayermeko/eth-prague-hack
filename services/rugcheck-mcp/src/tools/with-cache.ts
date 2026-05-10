@@ -6,15 +6,21 @@ export interface CachedToolInput {
   address: string;
 }
 
-export interface WithCacheOptions {
+export interface WithCacheOptions<O> {
   tool: string;
   ttlMs: number;
   cache: WalletCache;
+  /**
+   * Optional predicate: return false to skip storing this result.
+   * Defaults to "cache everything". Use to avoid caching soft-fail empty
+   * results that would poison subsequent calls for the full TTL.
+   */
+  shouldCache?: (result: O) => boolean;
 }
 
 export function withCache<I extends CachedToolInput, O>(
   fn: (input: I) => Promise<O>,
-  opts: WithCacheOptions,
+  opts: WithCacheOptions<O>,
 ): (input: I) => Promise<O> {
   return async (input: I): Promise<O> => {
     const cached = opts.cache.get<O>(input.address, opts.tool);
@@ -24,7 +30,9 @@ export function withCache<I extends CachedToolInput, O>(
       return cached;
     }
     const result = await fn(input);
-    opts.cache.set(input.address, opts.tool, result, opts.ttlMs);
+    if (!opts.shouldCache || opts.shouldCache(result)) {
+      opts.cache.set(input.address, opts.tool, result, opts.ttlMs);
+    }
     return result;
   };
 }

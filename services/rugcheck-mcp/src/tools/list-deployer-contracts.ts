@@ -22,7 +22,6 @@ export interface ListDeployerContractsInput {
   address: string;
   actorClient: ApifyActorClient;
   actorId: string;
-  maxContracts?: number;
 }
 
 export interface ListDeployerContractsOutput {

@@ -80,7 +80,15 @@ const callXMentions = withCache(
       actorId: env.X_SCRAPER_ACTOR_ID,
       linkedHandle: null,
     }),
-  { tool: 'scrape_x_mentions', ttlMs: TTL.scrape_x_mentions, cache },
+  {
+    tool: 'scrape_x_mentions',
+    ttlMs: TTL.scrape_x_mentions,
+    cache,
+    shouldCache: (r) =>
+      r.payments.length > 0 ||
+      r.literalMentions.length > 0 ||
+      r.authoredByLinkedHandle.length > 0,
+  },
 );
 
 const callListDeployer = withCache(
@@ -90,7 +98,12 @@ const callListDeployer = withCache(
       actorClient,
       actorId: env.BASESCAN_DEEP_ACTOR_ID,
     }),
-  { tool: 'list_deployer_contracts', ttlMs: TTL.list_deployer_contracts, cache },
+  {
+    tool: 'list_deployer_contracts',
+    ttlMs: TTL.list_deployer_contracts,
+    cache,
+    shouldCache: (r) => r.payments.length > 0 || r.totalContractsDeployed > 0,
+  },
 );
 
 const callCheckBlacklists = withCache(
@@ -101,7 +114,12 @@ const callCheckBlacklists = withCache(
         fetchGoPlusFlags({ address, chainId: env.GOPLUS_CHAIN_ID }),
       scamSnifferCheck,
     }),
-  { tool: 'check_scam_blacklists', ttlMs: TTL.check_scam_blacklists, cache },
+  {
+    tool: 'check_scam_blacklists',
+    ttlMs: TTL.check_scam_blacklists,
+    cache,
+    shouldCache: (r) => r.sources.goplus === 'ok' || r.sources.scamsniffer === 'ok',
+  },
 );
 
 const callAnalyzeCluster = withCache(
@@ -111,7 +129,15 @@ const callAnalyzeCluster = withCache(
       actorClient,
       actorId: env.METASLEUTH_DEEP_ACTOR_ID,
     }),
-  { tool: 'analyze_wallet_cluster', ttlMs: TTL.analyze_wallet_cluster, cache },
+  {
+    tool: 'analyze_wallet_cluster',
+    ttlMs: TTL.analyze_wallet_cluster,
+    cache,
+    shouldCache: (r) =>
+      r.payments.length > 0 ||
+      r.fundingSource !== null ||
+      r.relatedWallets.length > 0,
+  },
 );
 
 const server = new Server(

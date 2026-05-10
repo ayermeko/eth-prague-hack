@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterAll } from 'vitest';
 import { withCache } from '../src/tools/with-cache.js';
 import { WalletCache } from '../src/wallet-cache.js';
 
@@ -51,6 +51,31 @@ describe('withCache', () => {
     await expect(wrapped({ address: '0xabc' })).rejects.toThrow('boom');
     expect(cache.get('0xabc', 'demo_tool')).toBeNull();
   });
+
+  it('skips caching when shouldCache predicate returns false', async () => {
+    const cache = new WalletCache();
+    const inner = vi
+      .fn()
+      .mockResolvedValueOnce({ value: 'soft-fail', payments: [] })
+      .mockResolvedValueOnce({ value: 'real', payments: ['p1'] });
+    const wrapped = withCache(inner, {
+      tool: 'demo_tool',
+      ttlMs: 60_000,
+      cache,
+      shouldCache: (r: { payments: string[] }) => r.payments.length > 0,
+    });
+
+    const first = await wrapped({ address: '0xabc' });
+    expect(first).toEqual({ value: 'soft-fail', payments: [] });
+    expect(cache.get('0xabc', 'demo_tool')).toBeNull();
+
+    const second = await wrapped({ address: '0xabc' });
+    expect(second).toEqual({ value: 'real', payments: ['p1'] });
+    expect(inner).toHaveBeenCalledTimes(2);
+    expect(cache.get('0xabc', 'demo_tool')).toEqual({ value: 'real', payments: ['p1'] });
+  });
 });
 
-stderrSpy.mockRestore;
+afterAll(() => {
+  stderrSpy.mockRestore();
+});

@@ -16,7 +16,7 @@ export type ScamSnifferChecker = (address: string) => Promise<boolean>;
 export function createScamSnifferChecker(opts: ScamSnifferOptions = {}): ScamSnifferChecker {
   const fetchImpl = opts.fetch ?? globalThis.fetch;
   const ttl = opts.ttlMs ?? DEFAULT_TTL_MS;
-  const url = opts.url ?? SCAMSNIFFER_URL;
+  const url = opts.url ?? process.env.SCAMSNIFFER_URL ?? SCAMSNIFFER_URL;
 
   let set: Set<string> = new Set();
   let loadedAt = 0;
