@@ -13,6 +13,9 @@ You paste a suspect token contract address. RugSleuth — an autonomous agent wi
 
 The agent is not a hand-rolled LLM loop. It runs inside **Codex CLI** (GPT-5.x agent harness), with our paid scrapers exposed via a custom MCP server. Codex picks what to investigate, recovers from failures, writes its own scratch reports, and decides when it has enough evidence.
 
+![flow](docs/flow.png)
+
+
 ---
 
 ## 1. Context
